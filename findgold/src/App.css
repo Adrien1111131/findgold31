@@ -1,0 +1,39 @@
+.app {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.content {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  min-height: calc(100vh - 100px);
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  main {
+    padding: 15px;
+    min-height: calc(100vh - 80px);
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 10px;
+    min-height: calc(100vh - 60px);
+  }
+}

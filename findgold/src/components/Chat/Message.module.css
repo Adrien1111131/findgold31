@@ -1,0 +1,108 @@
+.messageContainer {
+  display: flex;
+  margin: 8px 0;
+  max-width: 80%;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.user {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.assistant {
+  margin-right: auto;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar svg {
+  width: 20px;
+  height: 20px;
+  color: #FFD700;
+}
+
+.messageContent {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px;
+  border-radius: 12px;
+  position: relative;
+  min-width: 100px;
+}
+
+.user .messageContent {
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.assistant .messageContent {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.imageContainer {
+  margin-bottom: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.imageContainer img {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  display: block;
+}
+
+.textContent {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.textContent p {
+  margin: 0;
+  padding: 2px 0;
+}
+
+.timestamp {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: right;
+  margin-top: 4px;
+}
+
+.user .timestamp {
+  color: rgba(255, 215, 0, 0.7);
+}
+
+@media (max-width: 768px) {
+  .messageContainer {
+    max-width: 90%;
+  }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .avatar svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .textContent {
+    font-size: 0.9rem;
+  }
+}

@@ -1,0 +1,132 @@
+.inputContainer {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.imagePreview {
+  margin-bottom: 12px;
+  position: relative;
+  width: fit-content;
+  max-width: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.imagePreview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.removeImage {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFD700;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
+.removeImage:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.removeImage svg {
+  width: 16px;
+  height: 16px;
+}
+
+.inputWrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  max-height: 120px;
+  min-height: 24px;
+  padding: 4px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.attachButton,
+.sendButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 215, 0, 0.7);
+  transition: all 0.3s ease;
+}
+
+.attachButton svg,
+.sendButton svg {
+  width: 24px;
+  height: 24px;
+}
+
+.attachButton:hover,
+.sendButton:hover {
+  background: rgba(255, 215, 0, 0.1);
+  color: #FFD700;
+  transform: translateY(-2px);
+}
+
+.attachButton:disabled,
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.fileInput {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .inputContainer {
+    padding: 12px;
+  }
+
+  .attachButton svg,
+  .sendButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .input {
+    font-size: 0.9rem;
+  }
+}

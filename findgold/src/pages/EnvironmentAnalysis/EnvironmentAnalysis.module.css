@@ -1,0 +1,79 @@
+.container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: #2a2a2a;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tab:hover {
+  background-color: #3a3a3a;
+}
+
+.tab.active {
+  background-color: #007bff;
+}
+
+.content {
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 1rem;
+  padding: 2rem;
+}
+
+.analyzing {
+  text-align: center;
+  margin: 2rem 0;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.error {
+  color: #ff4444;
+  background-color: rgba(255, 68, 68, 0.1);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.result {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+}
+
+.description {
+  color: #fff;
+  white-space: pre-wrap;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.imageResult {
+  margin-top: 2rem;
+}
+
+.imageResult h3 {
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+.resultImage {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
