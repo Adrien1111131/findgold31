@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "findgold/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "findgold/dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "findgold/dist/$1"
+    }
+  ],
+  "installCommand": "npm install --include=dev",
+  "buildCommand": "npm run build",
+  "outputDirectory": "findgold/dist"
+}
