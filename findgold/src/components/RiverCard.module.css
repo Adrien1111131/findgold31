@@ -1,0 +1,252 @@
+.riverCard {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  color: #ffd700;
+  font-size: 1.5rem;
+  word-break: break-word;
+}
+
+.typeTag {
+  font-size: 0.8rem;
+  background-color: rgba(255, 215, 0, 0.2);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  color: white;
+  display: inline-block;
+}
+
+.rating {
+  color: #ffd700;
+  white-space: nowrap;
+  margin-left: 0.5rem;
+}
+
+.description {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.sourcesTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.sourceTag {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sourceTagBrgm {
+  background-color: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+}
+
+.infoSection {
+  margin: 0.8rem 0;
+  padding: 0.5rem;
+  background-color: rgba(255, 215, 0, 0.1);
+  border-radius: 6px;
+}
+
+.infoSectionBordered {
+  border-left: 3px solid #ffd700;
+}
+
+.infoTitle {
+  font-size: 0.85rem;
+  color: #ffd700;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+}
+
+.infoIcon {
+  margin-right: 0.3rem;
+}
+
+.infoContent {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+  overflow-wrap: break-word;
+}
+
+.spotItem {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.spotHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.spotPriority {
+  font-size: 0.8rem;
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.spotCoordinates {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+.spotDescription {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.3rem;
+  overflow-wrap: break-word;
+}
+
+.featureTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.featureTag {
+  font-size: 0.7rem;
+  background-color: rgba(255, 215, 0, 0.2);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.coordinates {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  word-break: break-all;
+}
+
+.detailsButton {
+  background: #ffd700;
+  color: #000;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Media queries pour la responsivité */
+@media (max-width: 768px) {
+  .riverCard {
+    padding: 0.8rem;
+  }
+  
+  .title {
+    font-size: 1.3rem;
+  }
+  
+  .typeTag {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+  }
+  
+  .description {
+    font-size: 0.85rem;
+  }
+  
+  .infoSection {
+    padding: 0.4rem;
+  }
+  
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .detailsButton {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .riverCard {
+    padding: 0.6rem;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .rating {
+    margin-left: 0;
+    margin-top: 0.3rem;
+  }
+  
+  .title {
+    font-size: 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  
+  .typeTag {
+    margin-left: 0;
+  }
+  
+  .spotHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .spotCoordinates {
+    margin-top: 0.2rem;
+  }
+  
+  .detailsButton {
+    width: 100%;
+    text-align: center;
+  }
+}

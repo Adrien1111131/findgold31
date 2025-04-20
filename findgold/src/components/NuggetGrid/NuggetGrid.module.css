@@ -1,6 +1,6 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 280px);
+  grid-template-columns: repeat(2, minmax(180px, 280px));
   grid-template-rows: repeat(2, auto);
   gap: 4rem;
   justify-content: center;
@@ -9,10 +9,11 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -40%);
-  width: calc(560px + 4rem);
-  height: calc(560px + 4rem);
+  width: 90vw;
+  max-width: calc(560px + 4rem);
   margin: 0 auto;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .centerLogo {
@@ -28,8 +29,7 @@
 
 @media (max-width: 1200px) {
   .grid {
-    grid-template-columns: repeat(2, 260px);
-    gap: 4rem;
+    gap: 3.5rem;
   }
   
   .centerLogo {
@@ -39,7 +39,7 @@
 
 @media (max-width: 768px) {
   .grid {
-    grid-template-columns: repeat(2, 240px);
+    grid-template-columns: repeat(2, minmax(150px, 240px));
     gap: 3rem;
   }
   
@@ -50,22 +50,31 @@
 
 @media (max-width: 480px) {
   .grid {
-    grid-template-columns: repeat(2, 210px);
+    grid-template-columns: repeat(2, minmax(120px, 210px));
     gap: 2rem;
+    width: 95vw;
   }
   
   .centerLogo {
-    width: 200px;
+    width: 180px;
   }
 }
 
-@media (max-width: 320px) {
+@media (max-width: 360px) {
   .grid {
-    grid-template-columns: repeat(2, 180px);
+    grid-template-columns: repeat(2, minmax(100px, 180px));
     gap: 1.5rem;
+    transform: translate(-50%, -45%);
   }
   
   .centerLogo {
     width: 150px;
+  }
+}
+
+@media (max-height: 600px) {
+  .grid {
+    transform: translate(-50%, -45%);
+    gap: 2rem;
   }
 }

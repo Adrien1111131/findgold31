@@ -12,7 +12,7 @@ const Tutorials: React.FC = () => {
             <ul className={styles.resourceList}>
               <li className={styles.resourceItem}>
                 <a 
-                  href="http://pujol.chez-alice.fr/guppyor/" 
+                  href="https://www.orpaillage.fr/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className={styles.resourceLink}
@@ -21,6 +21,32 @@ const Tutorials: React.FC = () => {
                 </a>
                 <p className={styles.resourceDescription}>
                   Un guide complet sur les techniques d'orpaillage, la géologie de l'or et les meilleurs spots en France.
+                </p>
+              </li>
+              <li className={styles.resourceItem}>
+                <a 
+                  href="https://www.prospection-de-loisir.fr/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={styles.resourceLink}
+                >
+                  Prospection de loisir
+                </a>
+                <p className={styles.resourceDescription}>
+                  Communauté de prospecteurs avec des guides, forums et conseils pour l'orpaillage en France.
+                </p>
+              </li>
+              <li className={styles.resourceItem}>
+                <a 
+                  href="https://www.chercheur-or.fr/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={styles.resourceLink}
+                >
+                  Chercheur d'or
+                </a>
+                <p className={styles.resourceDescription}>
+                  Ressources et guides pour la prospection aurifère, techniques et matériel.
                 </p>
               </li>
             </ul>

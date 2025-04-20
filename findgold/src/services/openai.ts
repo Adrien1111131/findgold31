@@ -999,10 +999,12 @@ SOURCES DE DONNÉES OFFICIELLES :
    - Indices minéralisés
    Données actuelles : ${sourcesData.mineralInfoData}
 
-3. GuppyOr - http://pujol.chez-alice.fr/guppyor/
-   - Témoignages d'orpailleurs
-   - Spots connus et documentés
-   - Historique des découvertes
+3. Sites spécialisés en orpaillage
+   - orpaillage.fr (Site de référence sur l'orpaillage)
+   - goldlineorpaillage.fr (Expériences et spots vérifiés)
+   - https://www.prospection-de-loisir.fr/ (Communauté de prospecteurs)
+   - https://www.chercheur-or.fr/ (Ressources et guides)
+   - https://www.orpaillage-loisir.com/ (Communauté d'orpailleurs)
    Données actuelles : ${sourcesData.guppyOrData}
 
 4. Géoforum - https://www.geoforum.fr/forum/39-orpaillage/

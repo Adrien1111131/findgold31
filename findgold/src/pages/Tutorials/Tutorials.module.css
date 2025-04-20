@@ -1,8 +1,20 @@
 .container {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 1.5rem;
+  width: 100%;
   text-align: center;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0.8rem;
+  }
 }
 
 .title {
@@ -10,6 +22,21 @@
   margin-bottom: 2rem;
   color: #fff;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 1.5rem;
+    margin-bottom: 1.2rem;
+  }
 }
 
 .content {
@@ -34,6 +61,19 @@
   text-align: left;
   border: 1px solid rgba(255, 215, 0, 0.3);
   transition: transform 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .resourceCard {
+    padding: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .resourceCard {
+    padding: 1rem;
+  }
 }
 
 .resourceCard:hover {
@@ -47,6 +87,19 @@
   margin-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   padding-bottom: 0.5rem;
+  word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .resourceTitle {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .resourceTitle {
+    font-size: 1.2rem;
+  }
 }
 
 .resourceList {
@@ -66,6 +119,20 @@
   display: inline-block;
   margin-bottom: 0.5rem;
   transition: color 0.2s;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .resourceLink {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .resourceLink {
+    font-size: 1rem;
+  }
 }
 
 .resourceLink:hover {
@@ -77,4 +144,18 @@
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.5;
   margin: 0;
+  word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .resourceDescription {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .resourceDescription {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
 }

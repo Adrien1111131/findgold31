@@ -58,11 +58,13 @@ Identifie les cours d'eau (rivières, ruisseaux, torrents) avec le meilleur pote
 
 SOURCES À VÉRIFIER SYSTÉMATIQUEMENT :
 
-1. Sites spécialisés en orpaillage (OBLIGATOIRE) :
-- http://pujol.chez-alice.fr/guppyor/ (Guppy Or)
+1. Sites spécialisés en orpaillage (OBLIGATOIRE - vérifier au moins UNE de ces sources) :
 - orpaillage.fr (Site de référence sur l'orpaillage)
 - goldlineorpaillage.fr (Expériences et spots vérifiés)
 - https://www.prospection-de-loisir.fr/ (Communauté de prospecteurs)
+- https://www.chercheur-or.fr/ (Ressources et guides)
+- https://www.orpaillage-loisir.com/ (Communauté d'orpailleurs)
+- Forums spécialisés (FFOR, Mindat, etc.)
 
 2. Données BRGM (OBLIGATOIRE) :
 - http://infoterre.brgm.fr : cartes géologiques, gîtes minéraux
@@ -79,10 +81,9 @@ SOURCES À VÉRIFIER SYSTÉMATIQUEMENT :
 RÈGLES DE VALIDATION :
 
 1. Pour chaque cours d'eau mentionné :
-   - OBLIGATOIRE : Vérifier sur au moins un des sites spécialisés listés
-   - OBLIGATOIRE : Confirmer avec les données BRGM
+   - OBLIGATOIRE : Vérifier sur au moins une des sources spécialisées listées OU confirmer avec les données BRGM
    - Citer PRÉCISÉMENT les sources (URLs spécifiques, pas juste les noms de sites)
-   - Indiquer la date de la dernière confirmation d'activité
+   - Si possible, indiquer la date de la dernière confirmation d'activité
 
 2. Types de spots à inclure :
    - Spots confirmés : mentionnés sur les sites spécialisés ET validés par BRGM
@@ -90,9 +91,9 @@ RÈGLES DE VALIDATION :
    - NE PAS INCLURE les spots sans source fiable ou sans indice géologique fort
 
 INSTRUCTIONS POUR LES COURS D'EAU :
-- Vérifier CHAQUE cours d'eau sur les sites spécialisés listés
-- Croiser avec les données géologiques du BRGM
-- Pour chaque spot, fournir les URLs précises des sources
+- Vérifier CHAQUE cours d'eau sur au moins une des sources fiables
+- Croiser avec les données géologiques du BRGM quand c'est possible
+- Pour chaque spot, fournir les sources utilisées
 - Distinguer clairement les spots confirmés des spots potentiels
 - Pour chaque cours d'eau trouvé, indiquer :
   * Son nom exact
