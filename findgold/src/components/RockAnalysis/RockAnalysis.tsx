@@ -16,9 +16,15 @@ const RockAnalysis: React.FC<RockAnalysisProps> = ({ onImageUpload }) => {
       reader.onloadend = () => {
         const base64Image = reader.result as string;
         setSelectedImage(base64Image);
-        onImageUpload(base64Image);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAnalyze = () => {
+    if (selectedImage) {
+      setIsAnalyzing(true);
+      onImageUpload(selectedImage);
     }
   };
 
@@ -55,7 +61,7 @@ const RockAnalysis: React.FC<RockAnalysisProps> = ({ onImageUpload }) => {
       {selectedImage && (
         <button
           className={styles.analyzeButton}
-          onClick={() => setIsAnalyzing(true)}
+          onClick={handleAnalyze}
           disabled={isAnalyzing}
         >
           {isAnalyzing ? 'Analyse en cours...' : 'Analyser les roches'}

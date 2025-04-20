@@ -200,7 +200,7 @@ export interface RiverAnalysisResult {
 export const analyzeRiverForGold = async (imageUrl: string, riverName: string): Promise<RiverAnalysisResult> => {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -323,10 +323,17 @@ Retournez votre analyse au format JSON :
   }
 };
 
+export interface GoldLinePoint {
+  x: number;
+  y: number;
+  description?: string;
+}
+
 export interface GoldLineAnalysisResult {
   description: string;
   modifiedImage: string;  // URL de l'image modifiée avec la gold line
   confidence: number;  // Niveau de confiance de 0 à 1
+  points: GoldLinePoint[];  // Points pour tracer la gold line
 }
 
 export interface RockAnalysisResult {
@@ -340,22 +347,61 @@ export interface RockAnalysisResult {
   recommendations: string[];
 }
 
+export interface GoldLinePoint {
+  x: number;
+  y: number;
+  description?: string;
+}
+
 export const analyzeGoldLine = async (imageBase64: string): Promise<GoldLineAnalysisResult> => {
   try {
-    // Première étape : Analyser l'image avec GPT-4V pour obtenir une description
-    const visionResponse = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+    // Analyser l'image et obtenir une description textuelle et les points de la gold line
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `Expert en prospection aurifère, spécialisé dans l'identification de la "gold line" dans les rivières. Analysez cette image et décrivez UNIQUEMENT où tracer une ligne d'or, sans donner d'instructions étape par étape. Concentrez-vous sur la description exacte du tracé en une seule phrase concise.`
+          content: `Expert en prospection aurifère, spécialisé dans l'identification de la "gold line" dans les rivières.
+          
+TÂCHE PRÉCISE :
+1. Analyser l'image d'une rivière ou d'un cours d'eau
+2. Identifier le tracé optimal pour la "gold line" (ligne d'or) - le chemin où l'or est le plus susceptible de s'accumuler
+3. Décrire TRÈS PRÉCISÉMENT où passerait cette ligne sur l'image, en utilisant des repères visuels clairs
+4. Fournir des coordonnées relatives (x,y) pour tracer la ligne sur l'image
+
+PRINCIPES GÉOMORPHOLOGIQUES POUR LA GOLD LINE :
+- L'or s'accumule dans les zones de ralentissement du courant
+- L'or se dépose en aval des obstacles (rochers, bancs de sable)
+- L'or suit le bord extérieur des virages (côté concave des méandres)
+- L'or se concentre dans les fissures et crevasses du bedrock
+- L'or s'accumule aux points de confluence et de rétrécissement
+
+FORMAT DE RÉPONSE (JSON) :
+{
+  "description": "Description détaillée du tracé de la gold line et pourquoi ces zones sont favorables à l'accumulation d'or",
+  "points": [
+    {"x": 0.1, "y": 0.5, "description": "Point de départ près du rocher gris"},
+    {"x": 0.2, "y": 0.48, "description": "Contourne l'obstacle"},
+    {"x": 0.3, "y": 0.45, "description": "Suit le courant principal"},
+    ...
+  ]
+}
+
+IMPORTANT:
+- Les coordonnées x et y sont relatives à l'image (0,0 = coin supérieur gauche, 1,1 = coin inférieur droit)
+- Fournir AU MOINS 15-20 points pour tracer une ligne fluide et précise
+- Les points doivent être ordonnés dans le sens du courant (de l'amont vers l'aval)
+- Espacer les points de manière régulière pour une courbe naturelle
+- Ajouter des points supplémentaires autour des obstacles et dans les virages
+- Inclure une description détaillée pour l'ensemble du tracé
+- Expliquer pourquoi ces zones sont favorables (obstacles, ralentissement, etc.)`
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Où devrait passer la gold line sur cette photo ? Donnez une description précise et concise du tracé."
+              text: "Analysez cette image de rivière et identifiez où passerait la gold line (ligne d'or). Fournissez les coordonnées précises pour tracer cette ligne sur l'image, ainsi qu'une description détaillée du tracé et pourquoi ces zones sont favorables à l'accumulation d'or."
             },
             {
               type: "image_url",
@@ -364,36 +410,75 @@ export const analyzeGoldLine = async (imageBase64: string): Promise<GoldLineAnal
           ]
         }
       ],
-      max_tokens: 100
+      max_tokens: 1500,
+      temperature: 0.7,
+      response_format: { type: "json_object" }
     });
 
-    const description = visionResponse.choices[0].message.content || "";
-
-    // Deuxième étape : Utiliser DALL-E 3 pour générer une nouvelle image
-    const generateResponse = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: `Recréez cette photo de rivière exactement comme elle est, avec les mêmes roches, la même eau, les mêmes arbres et le même angle. Ajoutez une ligne jaune (couleur #FFD700) qui suit ce tracé : ${description}. La ligne doit avoir une épaisseur de 5 pixels et une légère lueur. IMPORTANT : L'image doit être une copie EXACTE de l'originale, seule la ligne jaune doit être ajoutée.`,
-      n: 1,
-      size: "1024x1024",
-      quality: "hd",
-      style: "natural"
-    });
-
+    // Extraire la réponse JSON
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+    
+    // Vérifier que la réponse contient les champs attendus
+    if (!result.description || !Array.isArray(result.points) || result.points.length === 0) {
+      throw new Error("Format de réponse invalide");
+    }
+    
     return {
-      description: "Ligne d'or tracée selon le flux naturel de la rivière",
-      modifiedImage: generateResponse.data[0].url || "",
-      confidence: 0.9
+      description: result.description,
+      modifiedImage: imageBase64, // Retourner l'image originale
+      confidence: 0.9,
+      points: result.points
     };
   } catch (error) {
     console.error('Erreur lors de l\'analyse de la gold line:', error);
-    throw error;
+    
+    // En cas d'erreur, essayer une approche alternative
+    try {
+      console.log('Tentative alternative avec l\'API Vision...');
+      
+      // Obtenir une description textuelle
+      const textResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Expert en prospection aurifère, décrivez où passerait la gold line dans cette rivière et pourquoi."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Décrivez précisément où passerait la gold line (ligne d'or) sur cette image de rivière et expliquez pourquoi ces zones sont favorables à l'accumulation d'or."
+              },
+              {
+                type: "image_url",
+                image_url: { url: imageBase64 }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000
+      });
+      
+      return {
+        description: textResponse.choices[0].message.content || "Aucune analyse disponible",
+        modifiedImage: imageBase64, // Retourner l'image originale
+        confidence: 0.7,
+        points: [] // Pas de points disponibles dans ce cas
+      };
+    } catch (fallbackError) {
+      console.error('Erreur lors de la tentative alternative:', fallbackError);
+      throw new Error('Impossible d\'analyser la gold line. Veuillez réessayer.');
+    }
   }
 };
 
 export const analyzeRocks = async (imageUrl: string): Promise<RockAnalysisResult> => {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -468,7 +553,7 @@ export const analyzeImage = async (imageBase64: string): Promise<string> => {
     const formattedImage = validateAndFormatBase64Image(imageBase64);
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -553,7 +638,7 @@ N'hésitez pas à partager une nouvelle photo pour une analyse plus précise.`;
 export const analyzeGeologicalData = async (location: string): Promise<string> => {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -589,7 +674,7 @@ export const combineAnalysis = async (
 ): Promise<string> => {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -866,7 +951,7 @@ export const searchGoldLocations = async (location: string, options: SearchOptio
       });
 
       const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       temperature: 0.1,
       messages: [
         {

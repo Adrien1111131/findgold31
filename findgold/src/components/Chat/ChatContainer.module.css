@@ -1,9 +1,9 @@
 .container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 180px);
   max-width: 1000px;
-  margin: 0 auto;
+  margin: 60px auto 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.2);

@@ -1,220 +1,300 @@
 import { openai } from '../client';
-import { GoldSite, SearchOptions } from '../types';
-import { getCitySuggestions, getWaterwayAndPlaceDetails } from '../geo/citySearch';
-import { getRiverCoordinates, getGoldSourcesData } from '../geo/riverData';
-import { knownRivers } from './mockData';
 
-export const searchGoldLocations = async (location: string, options: SearchOptions): Promise<GoldSite[]> => {
-  console.log('Recherche de rivières aurifères pour:', location, 'avec options:', options);
-  
-  // Vérifier si nous avons des données connues pour cette localisation
-  const cityName = location.split('(')[0].trim().toLowerCase();
-  const knownCity = Object.keys(knownRivers).find(city => city.toLowerCase() === cityName);
-  
-  if (knownCity) {
-    console.log('Utilisation des données connues pour:', knownCity);
-    return knownRivers[knownCity];
-  }
+export interface Hotspot {
+  location: string;  // Description du lieu précis
+  description: string;  // Pourquoi c'est intéressant
+  source: string;  // BRGM ou retour d'expérience
+}
 
-  // Si pas de données connues, obtenir les coordonnées de la ville
-  const cityData = await getCitySuggestions(location.split('(')[0].trim());
-  if (!cityData || cityData.length === 0) {
-    throw new Error('Localisation non trouvée');
-  }
-  const city = cityData[0];
+export interface ProspectionSpot {
+  coordinates: [number, number];
+  description: string;
+  geologicalFeatures: string[];
+  accessInfo: string;
+  priority: number; // 1-3, 1 étant la plus haute priorité
+}
 
-  // Obtenir les rivières et lieux-dits de la zone
-  const areaDetails = await getWaterwayAndPlaceDetails(city.lat, city.lon, options.radius);
-  
+export interface GoldLocation {
+  name: string;
+  type: string;
+  coordinates: [number, number];
+  description: string;
+  geology: string;
+  history: string;
+  rating: number; // 1-5
+  sources: string[];
+  hotspots: Hotspot[];
+  isMainSpot: boolean; // true pour les 3 meilleurs spots, false pour les spots secondaires
+  goldOrigin?: {
+    description: string;
+    brgmData: string;
+    entryPoints: string[];
+    affluents: string[];
+  };
+  referencedSpots?: {
+    description: string;
+    locations: string[];
+    sources: string[];
+  };
+  prospectionSpots?: ProspectionSpot[]; // Nouveau champ pour les portions à prospecter
+}
+
+export interface GoldSearchResult {
+  mainSpots: GoldLocation[];
+  secondarySpots: GoldLocation[];
+}
+
+export async function searchGoldLocations(city: string, radius: number = 50): Promise<GoldSearchResult> {
   try {
-    // Enrichir le prompt avec les informations des rivières trouvées
-    const riverInfo = areaDetails.waterways
-      .map(w => `- ${w.name} (${w.type}): coordonnées [${w.coordinates.join(', ')}]`)
-      .join('\n');
-
-    // Récupérer les données des sources officielles pour chaque rivière
-    const sourcesDataPromises = areaDetails.waterways.map(async waterway => {
-      return await getGoldSourcesData(waterway.name, city.lat, city.lon);
-    });
-    const sourcesDataArray = await Promise.all(sourcesDataPromises);
-    
-    // Combiner les données de toutes les sources
-    const sourcesData = sourcesDataArray.reduce((acc, curr) => ({
-      brgmData: (acc.brgmData || '') + '\n' + curr.brgmData,
-      mineralInfoData: (acc.mineralInfoData || '') + '\n' + curr.mineralInfoData,
-      guppyOrData: (acc.guppyOrData || '') + '\n' + curr.guppyOrData,
-      geoforumData: (acc.geoforumData || '') + '\n' + curr.geoforumData,
-      detecteursData: (acc.detecteursData || '') + '\n' + curr.detecteursData
-    }), {
-      brgmData: '',
-      mineralInfoData: '',
-      guppyOrData: '',
-      geoforumData: '',
-      detecteursData: ''
-    });
-
     const response = await openai.chat.completions.create({
       model: "gpt-4",
-      temperature: 0.1,
       messages: [
         {
           role: "system",
-          content: `Tu es un expert en prospection aurifère, spécialisé dans l'identification des rivières et cours d'eau aurifères en France. Tu DOIS TOUJOURS répondre au format JSON valide.
+          content: `Tu es un expert en orpaillage et géologie, spécialisé dans l'identification des spots aurifères en France. 
+          
+TÂCHE :
+Identifie les cours d'eau (rivières, ruisseaux, torrents) avec le meilleur potentiel aurifère autour de la localisation donnée, dans un rayon de ${radius} km.
 
-ATTENTION - RÈGLES STRICTES :
-- NE PAS INVENTER de cours d'eau qui n'existent pas
-- NE PAS INVENTER de données historiques ou géologiques
-- Si aucun cours d'eau aurifère n'est documenté dans la zone, retourner un tableau vide []
-- TOUJOURS vérifier l'existence réelle des cours d'eau sur OpenStreetMap
-- TOUJOURS vérifier que les informations proviennent de sources fiables (GuppyOr, BRGM, FFOR)
+SOURCES À VÉRIFIER SYSTÉMATIQUEMENT :
 
-SOURCES DE DONNÉES OFFICIELLES :
+1. Sites spécialisés en orpaillage (OBLIGATOIRE) :
+- http://pujol.chez-alice.fr/guppyor/ (Guppy Or)
+- orpaillage.fr (Site de référence sur l'orpaillage)
+- goldlineorpaillage.fr (Expériences et spots vérifiés)
+- https://www.prospection-de-loisir.fr/ (Communauté de prospecteurs)
 
-1. InfoTerre (BRGM) - https://infoterre.brgm.fr/
-   - Cartes géologiques détaillées
-   - Données sur les minéralisations
-   - Contexte géologique local
-   Données actuelles : ${sourcesData.brgmData}
+2. Données BRGM (OBLIGATOIRE) :
+- http://infoterre.brgm.fr : cartes géologiques, gîtes minéraux
+- Inventaire minier national du BRGM
+- Cartes géologiques harmonisées
+- Publications scientifiques BRGM
 
-2. MineralInfo - https://www.mineralinfo.fr/
-   - Base de données des gisements
-   - Historique des exploitations
-   - Indices minéralisés
-   Données actuelles : ${sourcesData.mineralInfoData}
+3. Sources complémentaires (OPTIONNEL) :
+- Forum officiel de l'Association des Orpailleurs de France
+- Archives départementales
+- Publications historiques sur l'orpaillage
+- Témoignages vérifiés de prospecteurs
 
-3. GuppyOr - http://pujol.chez-alice.fr/guppyor/
-   - Témoignages d'orpailleurs
-   - Spots connus et documentés
-   - Historique des découvertes
-   Données actuelles : ${sourcesData.guppyOrData}
+RÈGLES DE VALIDATION :
 
-4. Géoforum - https://www.geoforum.fr/forum/39-orpaillage/
-   - Discussions récentes
-   - Retours d'expérience
-   - Conseils de prospection
-   Données actuelles : ${sourcesData.geoforumData}
+1. Pour chaque cours d'eau mentionné :
+   - OBLIGATOIRE : Vérifier sur au moins un des sites spécialisés listés
+   - OBLIGATOIRE : Confirmer avec les données BRGM
+   - Citer PRÉCISÉMENT les sources (URLs spécifiques, pas juste les noms de sites)
+   - Indiquer la date de la dernière confirmation d'activité
 
-5. Detecteurs.fr - https://www.detecteurs.fr/page/cours-eau-aurifere.html
-   - Carte interactive des rivières aurifères
-   - Données de localisation vérifiées
-   - Points d'accès documentés
-   Données actuelles : ${sourcesData.detecteursData}
+2. Types de spots à inclure :
+   - Spots confirmés : mentionnés sur les sites spécialisés ET validés par BRGM
+   - Spots potentiels : forte indication géologique BRGM mais pas encore de confirmation terrain
+   - NE PAS INCLURE les spots sans source fiable ou sans indice géologique fort
 
-Format requis:
-[{
-  "coordinates": [lat, lng],  // Coordonnées GPS précises sur le lit
-  "description": "Description détaillée avec références GuppyOr et BRGM",
-  "river": "Nom exact du cours d'eau",
-  "type": "rivière/ruisseau/torrent",  // Préciser le type
-  "distance": "Distance en km depuis ${location}",
-  "geology": "Description géologique détaillée (BRGM/InfoTerre)",
-  "rating": 1-5,  // Note globale
-  "ratingDetails": {
-    "forumMentions": ["URLs ou références GuppyOr/FFOR"],
-    "historicalData": "Données historiques vérifiables",
-    "geologicalScore": 1-5,  // Score BRGM
-    "accessibility": 1-5     // Difficulté d'accès
-  }
-}]`
+INSTRUCTIONS POUR LES COURS D'EAU :
+- Vérifier CHAQUE cours d'eau sur les sites spécialisés listés
+- Croiser avec les données géologiques du BRGM
+- Pour chaque spot, fournir les URLs précises des sources
+- Distinguer clairement les spots confirmés des spots potentiels
+- Pour chaque cours d'eau trouvé, indiquer :
+  * Son nom exact
+  * Les villes/villages à proximité
+  * Les points d'accès ou zones d'intérêt
+
+LOCALISATION DES POINTS (CRITIQUE) :
+- Pour chaque cours d'eau mentionné :
+  * Rechercher le cours d'eau sur Google Maps avec les villes/villages indiqués
+  * Placer le point DIRECTEMENT sur le cours d'eau, près des zones d'intérêt
+  * Toujours vérifier que le point est bien sur la rivière elle-même
+  * Les coordonnées doivent être précises et correspondre à un point sur le cours d'eau
+
+ANALYSE DÉTAILLÉE :
+Pour chaque cours d'eau, fournir :
+
+1. Sources et validation :
+   * URLs précises des mentions sur les sites spécialisés
+   * Références BRGM (numéros de cartes, identifiants de gîtes)
+   * Date de dernière confirmation d'activité
+   * Niveau de confiance (confirmé/potentiel)
+
+2. Données géologiques (BRGM) :
+   * Formations rocheuses favorables
+   * Indices minéralisés
+   * Structures géologiques pertinentes
+   * Analyses minéralogiques disponibles
+
+3. Retours d'expérience :
+   * Témoignages vérifiés (avec source)
+   * Historique d'exploitation
+   * Découvertes documentées
+   * Conditions d'accès et restrictions
+   
+2. Origine de l'or :
+   * Zones minéralisées traversées (selon BRGM)
+   * Affluents enrichissants
+   * Points d'entrée de l'or dans le cours d'eau
+   
+3. Spots historiques :
+   * Zones d'orpaillage documentées
+   * Points mentionnés dans les forums
+   * Secteurs d'accumulation naturelle
+
+FORMAT DE RÉPONSE REQUIS :
+Ta réponse doit être un objet JSON valide avec la structure suivante :
+{
+  "mainSpots": [
+    {
+      "name": "Nom du cours d'eau (avec ville/village proche)",
+      "type": "rivière/ruisseau/torrent",
+      "coordinates": [latitude, longitude],
+      "description": "Description détaillée du spot",
+      "geology": "Description géologique (failles, quartz, roches)",
+      "history": "Historique des découvertes",
+      "rating": 5, // Note de 1 à 5 sur le potentiel aurifère
+      "sources": ["Source 1", "Source 2"],
+      "hotspots": [
+        {
+          "location": "Description précise du lieu (ex: 'Confluence avec le ruisseau X')",
+          "description": "Pourquoi ce point précis est intéressant pour l'orpaillage",
+          "source": "Source de l'information (BRGM, forum, etc.)"
+        }
+      ],
+      "goldOrigin": {
+        "description": "Explication détaillée de l'origine de l'or dans ce cours d'eau",
+        "brgmData": "Données BRGM pertinentes (gîtes, filons, etc.)",
+        "entryPoints": ["Point 1 où l'or entre dans le cours d'eau", "Point 2..."],
+        "affluents": ["Affluent 1 qui apporte de l'or", "Affluent 2..."]
+      },
+      "referencedSpots": {
+        "description": "Vue d'ensemble des spots connus",
+        "locations": ["Spot 1 mentionné dans les forums/BRGM", "Spot 2..."],
+        "sources": ["Source 1 pour ces spots", "Source 2..."]
+      },
+      "isMainSpot": true
+    },
+    // 2 autres spots principaux
+  ],
+  "secondarySpots": [
+    // 3-5 spots secondaires avec le même format mais isMainSpot: false
+  ]
+}
+
+IMPORTANT :
+- Les 3 spots principaux doivent être les plus prometteurs
+- Inclure 3-5 spots secondaires (petits cours d'eau, torrents)
+- Attribuer une note objective basée sur les données disponibles
+- Citer les sources utilisées pour chaque spot
+- Pour chaque cours d'eau, identifier 1-3 "hotspots" (points d'intérêt spécifiques) :
+  * Zones de confluence
+  * Secteurs historiques
+  * Zones géologiquement favorables (failles, quartz)
+  * Spots mentionnés dans les forums
+- Utiliser les données BRGM pour l'analyse géologique et l'origine de l'or
+- Ne pas inclure de conseils de prospection
+- Ta réponse doit être uniquement le JSON, sans texte avant ou après`
         },
         {
           role: "user",
-          content: `Recherchez les cours d'eau aurifères autour de ${location} [${city.lat}, ${city.lon}] dans un rayon de ${options.radius}km.
-
-RIVIÈRES IDENTIFIÉES DANS LA ZONE :
-${riverInfo}
-
-INSTRUCTIONS SPÉCIFIQUES :
-1. Utilisez UNIQUEMENT les rivières listées ci-dessus
-2. Pour chaque rivière potentiellement aurifère :
-   - Vérifiez les données BRGM/InfoTerre pour la géologie
-   - Recherchez les mentions sur GuppyOr et FFOR
-   - Concentrez-vous sur les zones de confluence et méandres
-   - Identifiez les secteurs historiques d'orpaillage
-3. Placez les points EXACTEMENT sur les rivières mentionnées
-4. Privilégiez les zones avec :
-   - Formations géologiques favorables (données BRGM)
-   - Témoignages historiques (GuppyOr/FFOR)
-   - Caractéristiques morphologiques propices (méandres, confluences)
-5. Fournissez des références précises aux sources`
+          content: `Identifie les meilleurs spots pour l'orpaillage autour de ${city} dans un rayon de ${radius} km. Trouve les 3 cours d'eau principaux les plus prometteurs, ainsi que 3-5 cours d'eau secondaires (plus petits) qui pourraient aussi contenir de l'or. Pour chaque cours d'eau, indique les points précis (hotspots) les plus intéressants, l'origine de l'or selon les données BRGM, et les spots référencés dans la littérature ou les forums. IMPORTANT : Assure-toi que les coordonnées pointent exactement sur le cours d'eau.`
         }
       ],
-      max_tokens: 4096,
-      presence_penalty: 0.3,
-      frequency_penalty: 0.3
+      temperature: 0.7,
+      max_tokens: 3500
     });
 
-    console.log('Réponse brute de l\'API:', response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("Pas de réponse de l'IA");
+    }
 
-    const content = response.choices[0].message.content || "";
-    
     try {
-      const parsedContent = JSON.parse(content);
+      const parsedData = JSON.parse(content);
       
-      if (!Array.isArray(parsedContent)) {
-        console.error('La réponse n\'est pas un tableau:', parsedContent);
-        throw new Error('Format de réponse invalide');
+      // Vérifier la structure des données
+      if (!parsedData.mainSpots || !Array.isArray(parsedData.mainSpots)) {
+        throw new Error("Format de réponse invalide : 'mainSpots' manquant ou incorrect");
       }
-
-      // Pour chaque site, obtenir les coordonnées précises sur la rivière
-      const validatedSites = await Promise.all(parsedContent.map(async site => {
-        try {
-          // Trouver la rivière correspondante dans les données OpenStreetMap
-          const riverData = areaDetails.waterways.find(w => w.name.toLowerCase() === site.river.toLowerCase());
-          const coordinates = riverData ? riverData.coordinates : await getRiverCoordinates(site.river, city.lat, city.lon, options.radius);
-
-          // Vérifier et nettoyer la notation
-          const rating = Math.min(Math.max(1, Math.round(site.rating || 1)), 5);
-          const geologicalScore = Math.min(Math.max(1, Math.round(site.ratingDetails?.geologicalScore || 1)), 5);
-          const accessibility = Math.min(Math.max(1, Math.round(site.ratingDetails?.accessibility || 1)), 5);
-
-          return {
-            coordinates: coordinates,
-            description: site.description || "Description non disponible",
-            river: site.river || "Cours d'eau inconnu",
-            type: site.type || "rivière",
-            distance: site.distance || "Distance inconnue",
-            geology: site.geology || "Données géologiques non disponibles",
-            rating,
-            ratingDetails: {
-              forumMentions: Array.isArray(site.ratingDetails?.forumMentions) ? site.ratingDetails.forumMentions : [],
-              historicalData: site.ratingDetails?.historicalData || "Données historiques non disponibles",
-              geologicalScore,
-              accessibility
-            }
-          };
-        } catch (error) {
-          console.error(`Erreur lors du traitement du site ${site.river}:`, error);
-          throw error;
+      
+      if (!parsedData.secondarySpots || !Array.isArray(parsedData.secondarySpots)) {
+        throw new Error("Format de réponse invalide : 'secondarySpots' manquant ou incorrect");
+      }
+      
+      // Valider chaque spot
+      const validateSpot = (spot: any, index: number, isMain: boolean) => {
+        if (!spot.name) {
+          spot.name = isMain ? `Spot principal ${index + 1}` : `Spot secondaire ${index + 1}`;
         }
-      }));
-
-      // Trier les résultats selon l'option choisie
-      if (options.sortBy === 'rating') {
-        validatedSites.sort((a, b) => b.rating - a.rating);
-      } else {
-        validatedSites.sort((a, b) => {
-          const distA = parseInt(a.distance.replace(/[^0-9]/g, '')) || 0;
-          const distB = parseInt(b.distance.replace(/[^0-9]/g, '')) || 0;
-          return distA - distB;
-        });
-      }
-
-      // Pagination
-      const page = options.page || 0;
-      const perPage = options.perPage || 1;
-      const start = page * perPage;
-      const paginatedSites = validatedSites.slice(start, start + perPage);
-
-      console.log('Sites validés:', paginatedSites);
-      return paginatedSites;
-
-    } catch (e) {
-      console.error('Erreur lors du traitement de la réponse:', e);
-      throw new Error(`Impossible de trouver des rivières aurifères autour de ${location}. Veuillez réessayer avec une autre localisation ou un rayon plus grand.`);
+        
+        if (!spot.coordinates || !Array.isArray(spot.coordinates)) {
+          spot.coordinates = [0, 0]; // Coordonnées par défaut
+        }
+        
+        // S'assurer que tous les champs requis sont présents
+        spot.type = spot.type || "cours d'eau";
+        spot.description = spot.description || "Aucune description disponible";
+        spot.geology = spot.geology || "Aucune information géologique disponible";
+        spot.history = spot.history || "Aucun historique disponible";
+        spot.rating = spot.rating || 3;
+        spot.sources = spot.sources || [];
+        spot.hotspots = spot.hotspots || [];
+        spot.isMainSpot = isMain;
+      };
+      
+      parsedData.mainSpots.forEach((spot: any, index: number) => validateSpot(spot, index, true));
+      parsedData.secondarySpots.forEach((spot: any, index: number) => validateSpot(spot, index, false));
+      
+      return {
+        mainSpots: parsedData.mainSpots,
+        secondarySpots: parsedData.secondarySpots
+      };
+    } catch (parseError) {
+      console.error("Erreur lors du parsing JSON:", parseError);
+      
+      // Fallback: créer un résultat par défaut
+      const defaultResult: GoldSearchResult = {
+        mainSpots: [{
+          name: city,
+          type: "rivière",
+          coordinates: [0, 0],
+          description: "Nous n'avons pas pu obtenir d'informations précises pour cette localisation. Essayez avec une ville plus connue ou une région aurifère comme 'Limousin', 'Cévennes', ou 'Ariège'.",
+          geology: "Information non disponible",
+          history: "Information non disponible",
+          rating: 3,
+          sources: [],
+          hotspots: [{
+            location: "Non disponible",
+            description: "Aucune information sur les points d'intérêt spécifiques",
+            source: "N/A"
+          }],
+          isMainSpot: true
+        }],
+        secondarySpots: []
+      };
+      
+      return defaultResult;
     }
   } catch (error) {
-    console.error('Erreur lors de la recherche de sites aurifères:', error);
-    throw error;
+    console.error("Erreur lors de la recherche:", error);
+    
+    // Fallback: créer un résultat par défaut en cas d'erreur
+    const defaultResult: GoldSearchResult = {
+      mainSpots: [{
+        name: city,
+        type: "rivière",
+        coordinates: [0, 0],
+        description: "Une erreur s'est produite lors de la recherche. Veuillez réessayer ultérieurement ou essayer avec une autre localisation.",
+        geology: "Information non disponible",
+        history: "Information non disponible",
+        rating: 3,
+        sources: [],
+        hotspots: [{
+          location: "Non disponible",
+          description: "Aucune information sur les points d'intérêt spécifiques",
+          source: "N/A"
+        }],
+        isMainSpot: true
+      }],
+      secondarySpots: []
+    };
+    
+    return defaultResult;
   }
-};
+}

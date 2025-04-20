@@ -30,6 +30,140 @@
   text-align: center;
 }
 
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 3rem 0;
+  min-height: 200px;
+}
+
+.resultContainer {
+  margin-top: 3rem;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.resultContainer h2 {
+  color: #FFD700;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.resultContainer h3 {
+  color: #FFD700;
+  font-size: 1.4rem;
+  margin: 1rem 0;
+}
+
+.rockTypesContainer {
+  margin: 2rem 0;
+}
+
+.rockTypesList {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.rockTypeItem {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.rockTypeItem:hover {
+  border-color: rgba(255, 215, 0, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.rockTypeItem h3 {
+  margin-top: 0;
+  color: #FFD700;
+  font-size: 1.3rem;
+}
+
+.rockTypeItem p {
+  color: #fff;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.potentialBar {
+  height: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  margin: 1rem 0;
+}
+
+.potentialFill {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD700, #FFA500);
+  border-radius: 10px;
+  transition: width 0.5s ease-out;
+}
+
+.potentialBar span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+}
+
+.overallPotential {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.overallPotential h3 {
+  text-align: center;
+  margin-top: 0;
+}
+
+.recommendations {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.recommendations h3 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.recommendations ul {
+  padding-left: 1.5rem;
+  color: #fff;
+  line-height: 1.6;
+}
+
+.recommendations li {
+  margin-bottom: 0.5rem;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
@@ -42,5 +176,13 @@
   .description {
     font-size: 1.1rem;
     margin-bottom: 2rem;
+  }
+  
+  .rockTypesList {
+    grid-template-columns: 1fr;
+  }
+  
+  .resultContainer {
+    padding: 1rem;
   }
 }

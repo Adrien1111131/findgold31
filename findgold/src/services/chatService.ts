@@ -81,29 +81,48 @@ export const generateChatResponse = async (
   imageFile?: File
 ): Promise<string> => {
   try {
-    let imageAnalysis = '';
-    if (imageFile) {
-      const imageBase64 = await fileToBase64(imageFile);
-      imageAnalysis = await analyzeImage(imageBase64);
-    }
-
+    // Préparer les messages pour le chat
     const chatMessages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...messages.map(msg => ({
+      { role: 'system', content: SYSTEM_PROMPT }
+    ] as any[];
+
+    // Ajouter tous les messages précédents
+    for (let i = 0; i < messages.length - 1; i++) {
+      const msg = messages[i];
+      chatMessages.push({
         role: msg.sender === 'user' ? 'user' : 'assistant',
         content: msg.content
-      }))
-    ] as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-
-    if (imageAnalysis) {
-      chatMessages.push({
-        role: 'assistant',
-        content: `Analyse de l'image fournie :\n${imageAnalysis}`
       });
     }
 
+    // Traiter le dernier message (qui peut contenir une image)
+    const lastMessage = messages[messages.length - 1];
+    
+    if (imageFile && lastMessage.sender === 'user') {
+      // Si le dernier message est de l'utilisateur et contient une image
+      const imageBase64 = await fileToBase64(imageFile);
+      
+      chatMessages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: lastMessage.content },
+          { 
+            type: 'image_url', 
+            image_url: { url: imageBase64 }
+          }
+        ]
+      });
+    } else {
+      // Sinon, ajouter le message normalement
+      chatMessages.push({
+        role: lastMessage.sender === 'user' ? 'user' : 'assistant',
+        content: lastMessage.content
+      });
+    }
+
+    // Appeler l'API avec le modèle GPT-4.1 qui supporte la vision
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4.1',
       messages: chatMessages,
       temperature: 0.7,
       max_tokens: 1000,

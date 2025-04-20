@@ -60,16 +60,18 @@ export interface OverpassResponse {
 export interface GoldSite {
   coordinates: [number, number];
   description: string;
-  river: string;
-  type: 'rivière' | 'ruisseau' | 'torrent';  // Type de cours d'eau
+  spot?: string;           // Nom du spot spécifique
+  river: string;           // Nom du cours d'eau
+  type: string;            // Type de cours d'eau (rivière, ruisseau, torrent, canal, etc.)
   distance: string;
   geology: string;
-  rating: number;           // Note de 1 à 5
-  ratingDetails: {         // Détails de la notation
-    forumMentions: string[]; // Références aux discussions de forum
-    historicalData: string;  // Données historiques
-    geologicalScore: number; // Score géologique (1-5)
-    accessibility: number;   // Score d'accessibilité (1-5)
+  features?: string;       // Points d'intérêt (méandres, confluences, etc.)
+  rating: number;          // Note de 1 à 5
+  ratingDetails: {
+    forumMentions: string[];  // Références aux discussions de forum
+    historicalData: string;   // Données historiques
+    geologicalScore: number;  // Score géologique (1-5)
+    accessibility: number;    // Score d'accessibilité (1-5)
   };
   satelliteImageUrl?: string;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -20,9 +20,22 @@ N'hésitez pas à me poser vos questions ou à partager des photos de vos sites 
   timestamp: new Date()
 };
 
-const ChatContainer: React.FC = () => {
+interface ChatContainerProps {
+  initialMessage?: string;
+}
+
+const ChatContainer: React.FC<ChatContainerProps> = ({ initialMessage }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [loading, setLoading] = useState(false);
+  const [initialMessageSent, setInitialMessageSent] = useState(false);
+
+  // Envoyer le message initial automatiquement si fourni
+  useEffect(() => {
+    if (initialMessage && !initialMessageSent) {
+      handleSendMessage(initialMessage);
+      setInitialMessageSent(true);
+    }
+  }, [initialMessage, initialMessageSent]);
 
   const handleSendMessage = useCallback(async (content: string, imageFile?: File) => {
     const userMessage: ChatMessage = {

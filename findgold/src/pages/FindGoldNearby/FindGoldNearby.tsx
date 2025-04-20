@@ -1,185 +1,147 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Map from '../../features/map/components/Map';
-import { searchGoldLocations, getCitySuggestions, CityLocation, GoldSite, SearchOptions } from '../../services/openai';
-import RiverAnalysis from '../../components/RiverAnalysis/RiverAnalysis';
+import React, { useState } from 'react';
+import SearchForm from '../../components/SearchForm';
+import ProgressBar from '../../components/ProgressBar';
+import RiverCard from '../../components/RiverCard';
+import RiverDetails from '../../components/RiverDetails';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { GoldLocation, GoldSearchResult, searchGoldLocations } from '../../services/openai/search/goldLocations';
+import { searchUnknownGoldLocations } from '../../services/openai/search/unknownGoldLocations';
+import { searchAdditionalGoldLocations } from '../../services/openai/search/additionalGoldLocations';
+import UnknownSpotsTab from '../../components/UnknownSpotsTab/UnknownSpotsTab';
 import styles from './FindGoldNearby.module.css';
 
-interface SearchResult {
-  location: string;
-  sites: GoldSite[];
-}
-
 export const FindGoldNearby = () => {
-  const [location, setLocation] = useState('');
-  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const [searchResult, setSearchResult] = useState<GoldSearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalResults, setTotalResults] = useState(0);
-  const [suggestions, setSuggestions] = useState<CityLocation[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedSite, setSelectedSite] = useState<GoldSite | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<CityLocation | null>(null);
-  const [searchRadius, setSearchRadius] = useState<number>(200);
-  const [sortBy, setSortBy] = useState<'distance' | 'rating'>('distance');
-  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const [selectedRiver, setSelectedRiver] = useState<GoldLocation | null>(null);
+  const [activeTab, setActiveTab] = useState<'main' | 'secondary' | 'unknown'>('main');
+  const [unknownSpots, setUnknownSpots] = useState<GoldLocation[]>([]);
+  const [isSearchingUnknown, setIsSearchingUnknown] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ city: string; radius: number } | null>(null);
+  
+  // États pour la fonctionnalité "Voir plus"
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreMainSpots, setHasMoreMainSpots] = useState(true); // On suppose qu'il y a plus de résultats par défaut
+  const [hasMoreSecondarySpots, setHasMoreSecondarySpots] = useState(true);
 
-  const handleMarkerClick = (site: GoldSite) => {
-    setSelectedSite(site);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setLocation(value);
+  // Fonction pour charger plus de spots
+  const handleLoadMore = async () => {
+    if (!currentLocation || !searchResult) return;
     
-    if (value.length >= 3) {
-      const citySuggestions = await getCitySuggestions(value);
-      setSuggestions(citySuggestions);
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
-
-  const selectSuggestion = (suggestion: CityLocation) => {
-    setLocation(suggestion.name);
-    setSelectedLocation(suggestion);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (selectedLocation) {
-      setIsSearching(true);
-      setError(null);
-      try {
-        const searchOptions: SearchOptions = {
-          radius: searchRadius,
-          sortBy: sortBy
-        };
-        
-        const goldSites = await searchGoldLocations(selectedLocation.fullName, {
-          ...searchOptions,
-          page: currentPage,
-          perPage: 1
+    setIsLoadingMore(true);
+    setError(null);
+    
+    try {
+      // Récupérer les noms des spots existants
+      const existingMainSpots = searchResult.mainSpots.map(spot => spot.name);
+      const existingSecondarySpots = searchResult.secondarySpots.map(spot => spot.name);
+      
+      const additionalResults = await searchAdditionalGoldLocations(
+        currentLocation.city,
+        currentLocation.radius,
+        existingMainSpots,
+        existingSecondarySpots
+      );
+      
+      // Mettre à jour les résultats
+      if (additionalResults.additionalMainSpots.length > 0 || additionalResults.additionalSecondarySpots.length > 0) {
+        setSearchResult({
+          mainSpots: [...searchResult.mainSpots, ...additionalResults.additionalMainSpots],
+          secondarySpots: [...searchResult.secondarySpots, ...additionalResults.additionalSecondarySpots]
         });
         
-        if (goldSites && goldSites.length > 0) {
-          // Trier les résultats selon l'option choisie
-          const sortedSites = [...goldSites].sort((a, b) => {
-            if (sortBy === 'distance') {
-              const distA = parseInt(a.distance.replace(/[^0-9]/g, '')) || 0;
-              const distB = parseInt(b.distance.replace(/[^0-9]/g, '')) || 0;
-              return distA - distB;
-            } else {
-              return b.rating - a.rating;
-            }
-          });
-
-          setTotalResults(sortedSites.length);
-          setSearchResult({
-            location: selectedLocation.fullName,
-            sites: sortedSites.slice(currentPage, currentPage + 1)
-          });
+        // Mettre à jour les indicateurs de résultats supplémentaires
+        setHasMoreMainSpots(additionalResults.hasMoreResults && additionalResults.additionalMainSpots.length > 0);
+        setHasMoreSecondarySpots(additionalResults.hasMoreResults && additionalResults.additionalSecondarySpots.length > 0);
+      } else {
+        setHasMoreMainSpots(false);
+        setHasMoreSecondarySpots(false);
+        
+        if (activeTab === 'main') {
+          setError("Aucun spot principal supplémentaire trouvé avec des sources vérifiables.");
         } else {
-          setError("Aucune rivière aurifère n'a été trouvée dans cette zone.");
-          setSearchResult(null);
+          setError("Aucun spot secondaire supplémentaire trouvé avec des sources vérifiables.");
         }
-      } catch (error) {
-        console.error('Erreur lors de la recherche:', error);
-        setError("Une erreur s'est produite lors de la recherche. Veuillez réessayer.");
-        setSearchResult(null);
-      } finally {
-        setIsSearching(false);
       }
+    } catch (error) {
+      console.error('Erreur lors de la recherche de spots supplémentaires:', error);
+      setError("Une erreur s'est produite lors de la recherche de spots supplémentaires.");
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
-  const renderRating = (rating: number) => {
-    return '⭐'.repeat(rating);
+  const handleSearch = async (city: string, radius: number) => {
+    setIsSearching(true);
+    setError(null);
+    setHasMoreMainSpots(true); // On suppose qu'il y a plus de résultats jusqu'à preuve du contraire
+    setHasMoreSecondarySpots(true);
+    
+    try {
+      const results = await searchGoldLocations(city, radius);
+      setSearchResult(results);
+      setActiveTab('main');
+      setCurrentLocation({ city, radius });
+    } catch (error) {
+      console.error('Erreur lors de la recherche:', error);
+      setError("Une erreur s'est produite lors de la recherche. Veuillez réessayer.");
+      setSearchResult(null);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleRiverDetailsClick = (river: GoldLocation) => {
+    setSelectedRiver(river);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedRiver(null);
+  };
+
+  const handleSearchUnknown = async () => {
+    if (!currentLocation) {
+      setError("Veuillez d'abord effectuer une recherche par ville pour définir la zone d'analyse.");
+      return;
+    }
+    
+    setIsSearchingUnknown(true);
+    setError(null);
+    try {
+      const results = await searchUnknownGoldLocations(currentLocation.city, currentLocation.radius);
+      
+      if (results.unknownSpots.length === 0) {
+        setError("Aucun cours d'eau potentiellement aurifère n'a été identifié dans cette zone d'après l'analyse géologique.");
+      } else if (results.unknownSpots.length === 1 && 
+                (results.unknownSpots[0].name === "Erreur d'analyse" || 
+                 results.unknownSpots[0].name === "Erreur de connexion")) {
+        // Afficher le message d'erreur spécifique
+        setError(results.unknownSpots[0].description);
+        setUnknownSpots([]);
+      } else {
+        setUnknownSpots(results.unknownSpots);
+        setError(null);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche de spots inconnus:', error);
+      setError("Une erreur s'est produite lors de l'analyse géologique. Veuillez réessayer ultérieurement.");
+      setUnknownSpots([]);
+    } finally {
+      setIsSearchingUnknown(false);
+    }
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.searchSection}>
         <h1 className={styles.title}>Trouve de l'or proche de chez toi</h1>
-        
-        <form onSubmit={handleSubmit} className={styles.locationForm}>
-          <div className={styles.searchControls}>
-            <div className={styles.searchInputContainer} ref={suggestionsRef}>
-              <input
-                type="text"
-                value={location}
-                onChange={handleInputChange}
-                placeholder="Entrer le nom de votre ville"
-                className={styles.input}
-                disabled={isSearching}
-              />
-              {showSuggestions && suggestions.length > 0 && (
-                <div className={styles.suggestions}>
-                  {suggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className={styles.suggestionItem}
-                      onClick={() => selectSuggestion(suggestion)}
-                    >
-                      <div className={styles.suggestionName}>{suggestion.name}</div>
-                      <div className={styles.suggestionRegion}>{suggestion.region}</div>
-                      <div className={styles.suggestionDistance}>
-                        Rechercher les rivières aurifères autour de cette ville
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <select
-              className={styles.radiusSelect}
-              value={searchRadius}
-              onChange={(e) => setSearchRadius(parseInt(e.target.value))}
-              disabled={isSearching}
-            >
-              <option value="50">50 km</option>
-              <option value="100">100 km</option>
-              <option value="150">150 km</option>
-              <option value="200">200 km</option>
-              <option value="250">250 km</option>
-              <option value="300">300 km</option>
-            </select>
-            <select
-              className={styles.sortSelect}
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'distance' | 'rating')}
-              disabled={isSearching}
-            >
-              <option value="distance">Trier par distance</option>
-              <option value="rating">Trier par note</option>
-            </select>
-          </div>
-          <button 
-            type="submit" 
-            className={styles.submitButton}
-            disabled={isSearching || !selectedLocation}
-          >
-            {isSearching ? 'Analyse en cours...' : 'Rechercher'}
-          </button>
-        </form>
-
+        <ProgressBar active={isSearching} />
+        <SearchForm onSearch={handleSearch} isLoading={isSearching} />
+        <LoadingSpinner 
+          active={isSearching} 
+          text="Recherche des cours d'eau aurifères en cours..."
+        />
         {error && (
           <div className={styles.error}>
             {error}
@@ -187,109 +149,154 @@ export const FindGoldNearby = () => {
         )}
       </div>
 
-      {searchResult && (
-        <div className={styles.resultsContainer}>
-          <div className={styles.mapSection}>
-            <Map 
-              center={searchResult.sites[0].coordinates}
-              sites={searchResult.sites}
-              onMarkerClick={handleMarkerClick}
-            />
-          </div>
-          
-          <div className={styles.sitesInfo}>
-            <h2>Rivières aurifères trouvées</h2>
-            {searchResult.sites.some(site => {
-              const distance = parseInt(site.distance.replace(/[^0-9]/g, '')) || 0;
-              return distance > 50;
-            }) && (
-              <div className={styles.infoMessage}>
-                Certaines rivières sont éloignées mais présentent un excellent potentiel aurifère.
-              </div>
-            )}
-            <div className={styles.navigationControls}>
-              <button
-                onClick={() => {
-                  setCurrentPage(prev => Math.max(0, prev - 1));
-                  handleSubmit(new Event('submit') as any);
-                }}
-                disabled={currentPage === 0 || isSearching}
-                className={styles.navButton}
-              >
-                Cours d'eau précédent
-              </button>
-              <span className={styles.pageInfo}>
-                {currentPage + 1} / {totalResults}
-              </span>
-              <button
-                onClick={() => {
-                  setCurrentPage(prev => Math.min(totalResults - 1, prev + 1));
-                  handleSubmit(new Event('submit') as any);
-                }}
-                disabled={currentPage >= totalResults - 1 || isSearching}
-                className={styles.navButton}
-              >
-                Cours d'eau suivant
-              </button>
-            </div>
-            <div className={styles.sitesList}>
-              {searchResult.sites.map((site, index) => {
-                const distance = parseInt(site.distance.replace(/[^0-9]/g, '')) || 0;
-                const distanceClass = distance <= 50 ? 'nearby' : distance <= 100 ? 'medium' : 'far';
-                
-                return (
-                  <div key={index} className={styles.siteCard}>
-                    <div className={styles.siteHeader}>
-                      <div className={styles.siteHeaderMain}>
-                        <h3>{site.river} <span className={styles.waterType} data-type={site.type}>{site.type}</span></h3>
-                        <div className={styles.rating}>{renderRating(site.rating)}</div>
-                      </div>
-                      <div 
-                        className={styles.distanceBadge}
-                        data-distance={distanceClass}
-                      >
-                        {site.distance}
-                      </div>
-                    </div>
-                    <p>{site.description}</p>
-                    <div className={styles.geologySection}>
-                      <h4>Géologie (BRGM/InfoTerre):</h4>
-                      <p>{site.geology}</p>
-                    </div>
-                    <div className={styles.ratingDetails}>
-                      <h4>Détails de la notation :</h4>
-                      <ul>
-                        <li>Score géologique : {renderRating(site.ratingDetails.geologicalScore)}</li>
-                        <li>Accessibilité : {renderRating(site.ratingDetails.accessibility)}</li>
-                        <li>Historique : {site.ratingDetails.historicalData}</li>
-                        {site.ratingDetails.forumMentions.length > 0 && (
-                          <li>
-                            Mentions sur les forums :
-                            <ul>
-                              {site.ratingDetails.forumMentions.map((mention, idx) => (
-                                <li key={idx}>{mention}</li>
-                              ))}
-                            </ul>
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                    <p className={styles.coordinates}>
-                      Coordonnées: {site.coordinates[0].toFixed(6)}, {site.coordinates[1].toFixed(6)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+      {/* Bouton "Trouver des spots inconnus" quand aucun résultat */}
+      {searchResult && searchResult.mainSpots.length === 0 && searchResult.secondarySpots.length === 0 && activeTab !== 'unknown' && (
+        <div className={styles.noResultsAction}>
+          <p>Aucun spot connu trouvé dans cette zone.</p>
+          <button 
+            onClick={() => {
+              setActiveTab('unknown');
+              handleSearchUnknown();
+            }}
+            className={styles.unknownSearchButton}
+          >
+            <span>🔍</span> Chercher des spots potentiels par analyse géologique
+          </button>
         </div>
       )}
 
-      {selectedSite && (
-        <RiverAnalysis
-          site={selectedSite}
-          onClose={() => setSelectedSite(null)}
-        />
+      {/* Conteneur des résultats avec les onglets */}
+      {(searchResult || unknownSpots.length > 0 || isSearchingUnknown) && (
+        <div className={styles.resultsContainer}>
+          <div className={styles.tabsContainer}>
+            {searchResult && (
+              <>
+                <button 
+                  className={`${styles.tabButton} ${activeTab === 'main' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('main')}
+                >
+                  Spots principaux
+                </button>
+                <button 
+                  className={`${styles.tabButton} ${activeTab === 'secondary' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('secondary')}
+                >
+                  Autres cours d'eau
+                </button>
+              </>
+            )}
+            <button 
+              className={`${styles.tabButton} ${activeTab === 'unknown' ? styles.activeTab : ''}`}
+              onClick={() => {
+                setActiveTab('unknown');
+                if (unknownSpots.length === 0 && !isSearchingUnknown) {
+                  handleSearchUnknown();
+                }
+              }}
+            >
+              Spots inconnus
+            </button>
+          </div>
+
+          {activeTab !== 'unknown' ? (
+            <div className={styles.riversList}>
+              {activeTab === 'main' ? (
+                searchResult && searchResult.mainSpots.length > 0 ? (
+                  <>
+                    {searchResult.mainSpots.map((river, index) => (
+                      <RiverCard 
+                        key={index} 
+                        river={river} 
+                        onDetailsClick={handleRiverDetailsClick} 
+                      />
+                    ))}
+                    
+                    {/* Bouton "Voir plus" pour les spots principaux */}
+                    {hasMoreMainSpots && (
+                      <div className={styles.loadMoreContainer}>
+                        <button 
+                          className={styles.loadMoreButton}
+                          onClick={handleLoadMore}
+                          disabled={isLoadingMore}
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <span className={styles.loadingDots}></span>
+                              Recherche en cours...
+                            </>
+                          ) : (
+                            <>
+                              <span>🔍</span> Voir plus de spots principaux
+                            </>
+                          )}
+                        </button>
+                        <div className={styles.loadMoreInfo}>
+                          Recherche dans des forums spécialisés et publications scientifiques
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.noResults}>
+                    Aucun spot principal trouvé dans cette zone.
+                  </div>
+                )
+              ) : (
+                searchResult && searchResult.secondarySpots.length > 0 ? (
+                  <>
+                    {searchResult.secondarySpots.map((river, index) => (
+                      <RiverCard 
+                        key={index} 
+                        river={river} 
+                        onDetailsClick={handleRiverDetailsClick} 
+                      />
+                    ))}
+                    
+                    {/* Bouton "Voir plus" pour les spots secondaires */}
+                    {hasMoreSecondarySpots && (
+                      <div className={styles.loadMoreContainer}>
+                        <button 
+                          className={styles.loadMoreButton}
+                          onClick={handleLoadMore}
+                          disabled={isLoadingMore}
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <span className={styles.loadingDots}></span>
+                              Recherche en cours...
+                            </>
+                          ) : (
+                            <>
+                              <span>🔍</span> Voir plus de cours d'eau
+                            </>
+                          )}
+                        </button>
+                        <div className={styles.loadMoreInfo}>
+                          Recherche dans des forums spécialisés et publications scientifiques
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.noResults}>
+                    Aucun spot secondaire trouvé dans cette zone.
+                  </div>
+                )
+              )}
+            </div>
+          ) : (
+            <UnknownSpotsTab
+              spots={unknownSpots}
+              onRiverDetailsClick={handleRiverDetailsClick}
+              onSearchUnknownSpots={handleSearchUnknown}
+              isLoading={isSearchingUnknown}
+            />
+          )}
+        </div>
+      )}
+
+      {selectedRiver && (
+        <RiverDetails river={selectedRiver} onClose={handleCloseDetails} />
       )}
     </div>
   );
