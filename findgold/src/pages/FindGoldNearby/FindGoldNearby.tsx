@@ -4,9 +4,8 @@ import ProgressBar from '../../components/ProgressBar';
 import RiverCard from '../../components/RiverCard';
 import RiverDetails from '../../components/RiverDetails';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { GoldLocation, GoldSearchResult, searchGoldLocations } from '../../services/openai/search/goldLocations';
+import { GoldLocation, GoldSearchResult, searchGoldLocations, SearchOptions } from '../../services/openai/search/goldLocations';
 import { searchUnknownGoldLocations } from '../../services/openai/search/unknownGoldLocations';
-import { searchAdditionalGoldLocations } from '../../services/openai/search/additionalGoldLocations';
 import UnknownSpotsTab from '../../components/UnknownSpotsTab/UnknownSpotsTab';
 import styles from './FindGoldNearby.module.css';
 
@@ -19,13 +18,42 @@ export const FindGoldNearby = () => {
   const [unknownSpots, setUnknownSpots] = useState<GoldLocation[]>([]);
   const [isSearchingUnknown, setIsSearchingUnknown] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ city: string; radius: number } | null>(null);
-  
-  // États pour la fonctionnalité "Voir plus"
+  const [currentPage, setCurrentPage] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMoreMainSpots, setHasMoreMainSpots] = useState(true); // On suppose qu'il y a plus de résultats par défaut
+  const [hasMoreMainSpots, setHasMoreMainSpots] = useState(true);
   const [hasMoreSecondarySpots, setHasMoreSecondarySpots] = useState(true);
 
-  // Fonction pour charger plus de spots
+  const handleSearch = async (city: string, radius: number) => {
+    setIsSearching(true);
+    setError(null);
+    setCurrentPage(0);
+    setHasMoreMainSpots(true);
+    setHasMoreSecondarySpots(true);
+    
+    try {
+      const searchOptions: SearchOptions = {
+        radius,
+        page: 0,
+        pageSize: 3,
+        loadMainSpots: true,
+        loadSecondarySpots: true
+      };
+
+      const results = await searchGoldLocations(city, searchOptions);
+      setSearchResult(results);
+      setActiveTab('main');
+      setCurrentLocation({ city, radius });
+      setHasMoreMainSpots(results.hasMoreResults);
+      setHasMoreSecondarySpots(results.hasMoreResults);
+    } catch (error) {
+      console.error('Erreur lors de la recherche:', error);
+      setError("Une erreur s'est produite lors de la recherche. Veuillez réessayer.");
+      setSearchResult(null);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleLoadMore = async () => {
     if (!currentLocation || !searchResult) return;
     
@@ -33,34 +61,38 @@ export const FindGoldNearby = () => {
     setError(null);
     
     try {
-      // Récupérer les noms des spots existants
-      const existingMainSpots = searchResult.mainSpots.map(spot => spot.name);
-      const existingSecondarySpots = searchResult.secondarySpots.map(spot => spot.name);
+      const nextPage = currentPage + 1;
+      const searchOptions: SearchOptions = {
+        radius: currentLocation.radius,
+        page: nextPage,
+        pageSize: 3,
+        loadMainSpots: activeTab === 'main',
+        loadSecondarySpots: activeTab === 'secondary'
+      };
+
+      const results = await searchGoldLocations(currentLocation.city, searchOptions);
       
-      const additionalResults = await searchAdditionalGoldLocations(
-        currentLocation.city,
-        currentLocation.radius,
-        existingMainSpots,
-        existingSecondarySpots
-      );
-      
-      // Mettre à jour les résultats
-      if (additionalResults.additionalMainSpots.length > 0 || additionalResults.additionalSecondarySpots.length > 0) {
+      if ((activeTab === 'main' && results.mainSpots.length > 0) || 
+          (activeTab === 'secondary' && results.secondarySpots.length > 0)) {
         setSearchResult({
-          mainSpots: [...searchResult.mainSpots, ...additionalResults.additionalMainSpots],
-          secondarySpots: [...searchResult.secondarySpots, ...additionalResults.additionalSecondarySpots]
+          mainSpots: activeTab === 'main' 
+            ? [...searchResult.mainSpots, ...results.mainSpots]
+            : searchResult.mainSpots,
+          secondarySpots: activeTab === 'secondary'
+            ? [...searchResult.secondarySpots, ...results.secondarySpots]
+            : searchResult.secondarySpots,
+          hasMoreResults: results.hasMoreResults
         });
         
-        // Mettre à jour les indicateurs de résultats supplémentaires
-        setHasMoreMainSpots(additionalResults.hasMoreResults && additionalResults.additionalMainSpots.length > 0);
-        setHasMoreSecondarySpots(additionalResults.hasMoreResults && additionalResults.additionalSecondarySpots.length > 0);
+        setCurrentPage(nextPage);
+        setHasMoreMainSpots(activeTab === 'main' ? results.hasMoreResults : hasMoreMainSpots);
+        setHasMoreSecondarySpots(activeTab === 'secondary' ? results.hasMoreResults : hasMoreSecondarySpots);
       } else {
-        setHasMoreMainSpots(false);
-        setHasMoreSecondarySpots(false);
-        
         if (activeTab === 'main') {
+          setHasMoreMainSpots(false);
           setError("Aucun spot principal supplémentaire trouvé avec des sources vérifiables.");
         } else {
+          setHasMoreSecondarySpots(false);
           setError("Aucun spot secondaire supplémentaire trouvé avec des sources vérifiables.");
         }
       }
@@ -69,26 +101,6 @@ export const FindGoldNearby = () => {
       setError("Une erreur s'est produite lors de la recherche de spots supplémentaires.");
     } finally {
       setIsLoadingMore(false);
-    }
-  };
-
-  const handleSearch = async (city: string, radius: number) => {
-    setIsSearching(true);
-    setError(null);
-    setHasMoreMainSpots(true); // On suppose qu'il y a plus de résultats jusqu'à preuve du contraire
-    setHasMoreSecondarySpots(true);
-    
-    try {
-      const results = await searchGoldLocations(city, radius);
-      setSearchResult(results);
-      setActiveTab('main');
-      setCurrentLocation({ city, radius });
-    } catch (error) {
-      console.error('Erreur lors de la recherche:', error);
-      setError("Une erreur s'est produite lors de la recherche. Veuillez réessayer.");
-      setSearchResult(null);
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -116,7 +128,6 @@ export const FindGoldNearby = () => {
       } else if (results.unknownSpots.length === 1 && 
                 (results.unknownSpots[0].name === "Erreur d'analyse" || 
                  results.unknownSpots[0].name === "Erreur de connexion")) {
-        // Afficher le message d'erreur spécifique
         setError(results.unknownSpots[0].description);
         setUnknownSpots([]);
       } else {
@@ -149,7 +160,6 @@ export const FindGoldNearby = () => {
         )}
       </div>
 
-      {/* Bouton "Trouver des spots inconnus" quand aucun résultat */}
       {searchResult && searchResult.mainSpots.length === 0 && searchResult.secondarySpots.length === 0 && activeTab !== 'unknown' && (
         <div className={styles.noResultsAction}>
           <p>Aucun spot connu trouvé dans cette zone.</p>
@@ -165,7 +175,6 @@ export const FindGoldNearby = () => {
         </div>
       )}
 
-      {/* Conteneur des résultats avec les onglets */}
       {(searchResult || unknownSpots.length > 0 || isSearchingUnknown) && (
         <div className={styles.resultsContainer}>
           <div className={styles.tabsContainer}>
@@ -205,13 +214,12 @@ export const FindGoldNearby = () => {
                   <>
                     {searchResult.mainSpots.map((river, index) => (
                       <RiverCard 
-                        key={index} 
+                        key={`${river.name}_${index}`}
                         river={river} 
                         onDetailsClick={handleRiverDetailsClick} 
                       />
                     ))}
                     
-                    {/* Bouton "Voir plus" pour les spots principaux */}
                     {hasMoreMainSpots && (
                       <div className={styles.loadMoreContainer}>
                         <button 
@@ -246,13 +254,12 @@ export const FindGoldNearby = () => {
                   <>
                     {searchResult.secondarySpots.map((river, index) => (
                       <RiverCard 
-                        key={index} 
+                        key={`${river.name}_${index}`}
                         river={river} 
                         onDetailsClick={handleRiverDetailsClick} 
                       />
                     ))}
                     
-                    {/* Bouton "Voir plus" pour les spots secondaires */}
                     {hasMoreSecondarySpots && (
                       <div className={styles.loadMoreContainer}>
                         <button 

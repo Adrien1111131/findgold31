@@ -1,4 +1,5 @@
 import { openai } from '../client';
+import { cacheService } from '../../cacheService';
 
 export interface Hotspot {
   location: string;  // Description du lieu précis
@@ -42,9 +43,39 @@ export interface GoldLocation {
 export interface GoldSearchResult {
   mainSpots: GoldLocation[];
   secondarySpots: GoldLocation[];
+  hasMoreResults: boolean;
 }
 
-export async function searchGoldLocations(city: string, radius: number = 50): Promise<GoldSearchResult> {
+export interface SearchOptions {
+  radius: number;
+  page?: number;
+  pageSize?: number;
+  loadMainSpots?: boolean;
+  loadSecondarySpots?: boolean;
+}
+
+const DEFAULT_PAGE_SIZE = 3;
+
+export async function searchGoldLocations(
+  city: string, 
+  options: SearchOptions = { radius: 50 }
+): Promise<GoldSearchResult> {
+  const {
+    radius,
+    page = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
+    loadMainSpots = true,
+    loadSecondarySpots = true
+  } = options;
+
+  // Vérifier le cache
+  const cacheKey = `${city}_${radius}_${page}_${pageSize}`;
+  const cachedResult = cacheService.get<GoldSearchResult>(city, radius, cacheKey);
+  if (cachedResult) {
+    console.log('Résultats récupérés depuis le cache');
+    return cachedResult;
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4",
@@ -55,6 +86,9 @@ export async function searchGoldLocations(city: string, radius: number = 50): Pr
           
 TÂCHE :
 Identifie les cours d'eau (rivières, ruisseaux, torrents) avec le meilleur potentiel aurifère autour de la localisation donnée, dans un rayon de ${radius} km.
+${loadMainSpots ? 'Retourne les spots principaux.' : ''}
+${loadSecondarySpots ? 'Retourne les spots secondaires.' : ''}
+Limite les résultats à ${pageSize} spots par catégorie.
 
 SOURCES À VÉRIFIER SYSTÉMATIQUEMENT :
 
@@ -72,129 +106,19 @@ SOURCES À VÉRIFIER SYSTÉMATIQUEMENT :
 - Cartes géologiques harmonisées
 - Publications scientifiques BRGM
 
-3. Sources complémentaires (OPTIONNEL) :
-- Forum officiel de l'Association des Orpailleurs de France
-- Archives départementales
-- Publications historiques sur l'orpaillage
-- Témoignages vérifiés de prospecteurs
-
-RÈGLES DE VALIDATION :
-
-1. Pour chaque cours d'eau mentionné :
-   - OBLIGATOIRE : Vérifier sur au moins une des sources spécialisées listées OU confirmer avec les données BRGM
-   - Citer PRÉCISÉMENT les sources (URLs spécifiques, pas juste les noms de sites)
-   - Si possible, indiquer la date de la dernière confirmation d'activité
-
-2. Types de spots à inclure :
-   - Spots confirmés : mentionnés sur les sites spécialisés ET validés par BRGM
-   - Spots potentiels : forte indication géologique BRGM mais pas encore de confirmation terrain
-   - NE PAS INCLURE les spots sans source fiable ou sans indice géologique fort
-
-INSTRUCTIONS POUR LES COURS D'EAU :
-- Vérifier CHAQUE cours d'eau sur au moins une des sources fiables
-- Croiser avec les données géologiques du BRGM quand c'est possible
-- Pour chaque spot, fournir les sources utilisées
-- Distinguer clairement les spots confirmés des spots potentiels
-- Pour chaque cours d'eau trouvé, indiquer :
-  * Son nom exact
-  * Les villes/villages à proximité
-  * Les points d'accès ou zones d'intérêt
-
-LOCALISATION DES POINTS (CRITIQUE) :
-- Pour chaque cours d'eau mentionné :
-  * Rechercher le cours d'eau sur Google Maps avec les villes/villages indiqués
-  * Placer le point DIRECTEMENT sur le cours d'eau, près des zones d'intérêt
-  * Toujours vérifier que le point est bien sur la rivière elle-même
-  * Les coordonnées doivent être précises et correspondre à un point sur le cours d'eau
-
-ANALYSE DÉTAILLÉE :
-Pour chaque cours d'eau, fournir :
-
-1. Sources et validation :
-   * URLs précises des mentions sur les sites spécialisés
-   * Références BRGM (numéros de cartes, identifiants de gîtes)
-   * Date de dernière confirmation d'activité
-   * Niveau de confiance (confirmé/potentiel)
-
-2. Données géologiques (BRGM) :
-   * Formations rocheuses favorables
-   * Indices minéralisés
-   * Structures géologiques pertinentes
-   * Analyses minéralogiques disponibles
-
-3. Retours d'expérience :
-   * Témoignages vérifiés (avec source)
-   * Historique d'exploitation
-   * Découvertes documentées
-   * Conditions d'accès et restrictions
-   
-2. Origine de l'or :
-   * Zones minéralisées traversées (selon BRGM)
-   * Affluents enrichissants
-   * Points d'entrée de l'or dans le cours d'eau
-   
-3. Spots historiques :
-   * Zones d'orpaillage documentées
-   * Points mentionnés dans les forums
-   * Secteurs d'accumulation naturelle
-
 FORMAT DE RÉPONSE REQUIS :
-Ta réponse doit être un objet JSON valide avec la structure suivante :
 {
-  "mainSpots": [
-    {
-      "name": "Nom du cours d'eau (avec ville/village proche)",
-      "type": "rivière/ruisseau/torrent",
-      "coordinates": [latitude, longitude],
-      "description": "Description détaillée du spot",
-      "geology": "Description géologique (failles, quartz, roches)",
-      "history": "Historique des découvertes",
-      "rating": 5, // Note de 1 à 5 sur le potentiel aurifère
-      "sources": ["Source 1", "Source 2"],
-      "hotspots": [
-        {
-          "location": "Description précise du lieu (ex: 'Confluence avec le ruisseau X')",
-          "description": "Pourquoi ce point précis est intéressant pour l'orpaillage",
-          "source": "Source de l'information (BRGM, forum, etc.)"
-        }
-      ],
-      "goldOrigin": {
-        "description": "Explication détaillée de l'origine de l'or dans ce cours d'eau",
-        "brgmData": "Données BRGM pertinentes (gîtes, filons, etc.)",
-        "entryPoints": ["Point 1 où l'or entre dans le cours d'eau", "Point 2..."],
-        "affluents": ["Affluent 1 qui apporte de l'or", "Affluent 2..."]
-      },
-      "referencedSpots": {
-        "description": "Vue d'ensemble des spots connus",
-        "locations": ["Spot 1 mentionné dans les forums/BRGM", "Spot 2..."],
-        "sources": ["Source 1 pour ces spots", "Source 2..."]
-      },
-      "isMainSpot": true
-    },
-    // 2 autres spots principaux
-  ],
-  "secondarySpots": [
-    // 3-5 spots secondaires avec le même format mais isMainSpot: false
-  ]
-}
-
-IMPORTANT :
-- Les 3 spots principaux doivent être les plus prometteurs
-- Inclure 3-5 spots secondaires (petits cours d'eau, torrents)
-- Attribuer une note objective basée sur les données disponibles
-- Citer les sources utilisées pour chaque spot
-- Pour chaque cours d'eau, identifier 1-3 "hotspots" (points d'intérêt spécifiques) :
-  * Zones de confluence
-  * Secteurs historiques
-  * Zones géologiquement favorables (failles, quartz)
-  * Spots mentionnés dans les forums
-- Utiliser les données BRGM pour l'analyse géologique et l'origine de l'or
-- Ne pas inclure de conseils de prospection
-- Ta réponse doit être uniquement le JSON, sans texte avant ou après`
+  "mainSpots": [],    // Si loadMainSpots est true
+  "secondarySpots": [],  // Si loadSecondarySpots est true
+  "hasMoreResults": true/false  // Indique s'il y a plus de résultats disponibles
+}`
         },
         {
           role: "user",
-          content: `Identifie les meilleurs spots pour l'orpaillage autour de ${city} dans un rayon de ${radius} km. Trouve les 3 cours d'eau principaux les plus prometteurs, ainsi que 3-5 cours d'eau secondaires (plus petits) qui pourraient aussi contenir de l'or. Pour chaque cours d'eau, indique les points précis (hotspots) les plus intéressants, l'origine de l'or selon les données BRGM, et les spots référencés dans la littérature ou les forums. IMPORTANT : Assure-toi que les coordonnées pointent exactement sur le cours d'eau.`
+          content: `Identifie les meilleurs spots pour l'orpaillage autour de ${city} dans un rayon de ${radius} km. 
+${loadMainSpots ? `Trouve les ${pageSize} prochains cours d'eau principaux les plus prometteurs (à partir de l'index ${page * pageSize}).` : ''}
+${loadSecondarySpots ? `Trouve les ${pageSize} prochains cours d'eau secondaires (à partir de l'index ${page * pageSize}).` : ''}
+Pour chaque cours d'eau, indique les points précis (hotspots) les plus intéressants et l'origine de l'or selon les données BRGM.`
         }
       ],
       temperature: 0.7,
@@ -209,15 +133,6 @@ IMPORTANT :
     try {
       const parsedData = JSON.parse(content);
       
-      // Vérifier la structure des données
-      if (!parsedData.mainSpots || !Array.isArray(parsedData.mainSpots)) {
-        throw new Error("Format de réponse invalide : 'mainSpots' manquant ou incorrect");
-      }
-      
-      if (!parsedData.secondarySpots || !Array.isArray(parsedData.secondarySpots)) {
-        throw new Error("Format de réponse invalide : 'secondarySpots' manquant ou incorrect");
-      }
-      
       // Valider chaque spot
       const validateSpot = (spot: any, index: number, isMain: boolean) => {
         if (!spot.name) {
@@ -225,10 +140,9 @@ IMPORTANT :
         }
         
         if (!spot.coordinates || !Array.isArray(spot.coordinates)) {
-          spot.coordinates = [0, 0]; // Coordonnées par défaut
+          spot.coordinates = [0, 0];
         }
         
-        // S'assurer que tous les champs requis sont présents
         spot.type = spot.type || "cours d'eau";
         spot.description = spot.description || "Aucune description disponible";
         spot.geology = spot.geology || "Aucune information géologique disponible";
@@ -239,63 +153,59 @@ IMPORTANT :
         spot.isMainSpot = isMain;
       };
       
-      parsedData.mainSpots.forEach((spot: any, index: number) => validateSpot(spot, index, true));
-      parsedData.secondarySpots.forEach((spot: any, index: number) => validateSpot(spot, index, false));
+      if (loadMainSpots && parsedData.mainSpots) {
+        parsedData.mainSpots.forEach((spot: any, index: number) => validateSpot(spot, index, true));
+      }
       
-      return {
-        mainSpots: parsedData.mainSpots,
-        secondarySpots: parsedData.secondarySpots
+      if (loadSecondarySpots && parsedData.secondarySpots) {
+        parsedData.secondarySpots.forEach((spot: any, index: number) => validateSpot(spot, index, false));
+      }
+
+      const result = {
+        mainSpots: loadMainSpots ? parsedData.mainSpots || [] : [],
+        secondarySpots: loadSecondarySpots ? parsedData.secondarySpots || [] : [],
+        hasMoreResults: parsedData.hasMoreResults ?? false
       };
+
+      // Mettre en cache les résultats
+      cacheService.set(city, radius, cacheKey, result);
+      
+      return result;
     } catch (parseError) {
       console.error("Erreur lors du parsing JSON:", parseError);
-      
-      // Fallback: créer un résultat par défaut
-      const defaultResult: GoldSearchResult = {
-        mainSpots: [{
-          name: city,
-          type: "rivière",
-          coordinates: [0, 0],
-          description: "Nous n'avons pas pu obtenir d'informations précises pour cette localisation. Essayez avec une ville plus connue ou une région aurifère comme 'Limousin', 'Cévennes', ou 'Ariège'.",
-          geology: "Information non disponible",
-          history: "Information non disponible",
-          rating: 3,
-          sources: [],
-          hotspots: [{
-            location: "Non disponible",
-            description: "Aucune information sur les points d'intérêt spécifiques",
-            source: "N/A"
-          }],
-          isMainSpot: true
-        }],
-        secondarySpots: []
-      };
-      
-      return defaultResult;
+      return createDefaultResult(city, loadMainSpots, loadSecondarySpots);
     }
   } catch (error) {
     console.error("Erreur lors de la recherche:", error);
-    
-    // Fallback: créer un résultat par défaut en cas d'erreur
-    const defaultResult: GoldSearchResult = {
-      mainSpots: [{
-        name: city,
-        type: "rivière",
-        coordinates: [0, 0],
-        description: "Une erreur s'est produite lors de la recherche. Veuillez réessayer ultérieurement ou essayer avec une autre localisation.",
-        geology: "Information non disponible",
-        history: "Information non disponible",
-        rating: 3,
-        sources: [],
-        hotspots: [{
-          location: "Non disponible",
-          description: "Aucune information sur les points d'intérêt spécifiques",
-          source: "N/A"
-        }],
-        isMainSpot: true
-      }],
-      secondarySpots: []
-    };
-    
-    return defaultResult;
+    return createDefaultResult(city, loadMainSpots, loadSecondarySpots);
   }
+}
+
+function createDefaultResult(
+  city: string,
+  loadMainSpots: boolean = true,
+  loadSecondarySpots: boolean = true
+): GoldSearchResult {
+  const defaultSpot: GoldLocation = {
+    name: city,
+    type: "rivière",
+    coordinates: [0, 0],
+    description: "Une erreur s'est produite lors de la recherche. Veuillez réessayer ultérieurement.",
+    geology: "Information non disponible",
+    history: "Information non disponible",
+    rating: 3,
+    sources: [],
+    hotspots: [{
+      location: "Non disponible",
+      description: "Aucune information sur les points d'intérêt spécifiques",
+      source: "N/A"
+    }],
+    isMainSpot: true
+  };
+
+  return {
+    mainSpots: loadMainSpots ? [defaultSpot] : [],
+    secondarySpots: loadSecondarySpots ? [] : [],
+    hasMoreResults: false
+  };
 }
